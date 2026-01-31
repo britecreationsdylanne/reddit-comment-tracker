@@ -1,0 +1,24 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/britepulse-reddit', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/britepulse-reddit']
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'britepulse-reddit'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/britepulse-reddit'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--min-instances=1'
+      - '--set-env-vars=ANTHROPIC_API_KEY=${_ANTHROPIC_API_KEY},SENDGRID_API_KEY=${_SENDGRID_API_KEY},SENDGRID_FROM_EMAIL=${_SENDGRID_FROM_EMAIL},SENDGRID_FROM_NAME=${_SENDGRID_FROM_NAME},REDDIT_USERNAME=${_REDDIT_USERNAME},FLASK_DEBUG=false,TEST_MODE=false'
+images:
+  - 'gcr.io/$PROJECT_ID/britepulse-reddit'
+options:
+  logging: CLOUD_LOGGING_ONLY

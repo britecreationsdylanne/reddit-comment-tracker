@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Settings - BriteCo Reddit Tracker{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Email Recipients -->
+    <div class="col-lg-7">
+        <div class="card stat-card">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background-color: #272d3f; color: #fff;">
+                <span><i class="bi bi-envelope-fill me-2"></i>Email Recipients</span>
+                <button class="btn btn-sm btn-outline-light" data-bs-toggle="collapse" data-bs-target="#addRecipientForm">
+                    <i class="bi bi-plus-lg me-1"></i>Add
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <!-- Add form (collapsed) -->
+                <div class="collapse p-3 border-bottom" id="addRecipientForm">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label mb-1" style="font-size: 0.8rem;">Name</label>
+                            <input type="text" class="form-control form-control-sm" id="newName" placeholder="Name">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label mb-1" style="font-size: 0.8rem;">Email</label>
+                            <input type="email" class="form-control form-control-sm" id="newEmail" placeholder="email@example.com">
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-sm btn-teal w-100" onclick="addRecipient()">
+                                <i class="bi bi-plus-lg me-1"></i>Add Recipient
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recipients table -->
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr style="font-size: 0.8rem; color: #888; text-transform: uppercase;">
+                            <th class="ps-3">Name</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th style="width: 120px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recipientsBody">
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-4">No recipients added yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer bg-white border-top d-flex gap-2">
+                <button class="btn btn-sm btn-outline-teal" onclick="sendTestEmail()">
+                    <i class="bi bi-send me-1"></i>Send Test Email
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule & Config -->
+    <div class="col-lg-5">
+        <div class="card stat-card mb-4">
+            <div class="card-header" style="background-color: #272d3f; color: #fff;">
+                <i class="bi bi-clock-fill me-2"></i>Schedule Configuration
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="text-muted" style="font-size: 0.85rem;">Daily scrape runs at:</div>
+                    <div class="fs-4 fw-bold" style="color: #272d3f;">{{ schedule_time }}</div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted" style="font-size: 0.85rem;">Reddit account:</div>
+                    <div class="fw-bold" style="color: #008181;">u/{{ reddit_username }}</div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-muted" style="font-size: 0.85rem;">Scrape mode:</div>
+                    <div class="fw-bold">
+                        {% if test_mode %}
+                            <span class="badge bg-warning text-dark">Test Mode (Mock Data)</span>
+                        {% elif has_api_creds %}
+                            <span class="badge bg-success">Reddit API (PRAW)</span>
+                        {% else %}
+                            <span class="badge bg-info text-dark">Public JSON Endpoints</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <hr>
+                <p class="text-muted" style="font-size: 0.8rem;">
+                    Change schedule by editing <code>SCRAPE_HOUR</code> and <code>SCRAPE_MINUTE</code> in the <code>.env</code> file and restarting the app.
+                </p>
+            </div>
+        </div>
+
+        <!-- Scrape History -->
+        <div class="card stat-card">
+            <div class="card-header" style="background-color: #272d3f; color: #fff;">
+                <i class="bi bi-journal-text me-2"></i>Scrape History
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0" style="font-size: 0.85rem;">
+                    <thead>
+                        <tr style="font-size: 0.75rem; color: #888; text-transform: uppercase;">
+                            <th class="ps-3">Time</th>
+                            <th>Posts</th>
+                            <th>New</th>
+                            <th>Status</th>
+                            <th>Email</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scrapeLogBody">
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-3">No scrapes yet</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // --- Load recipients ---
+    async function loadRecipients() {
+        try {
+            const res = await fetch('/api/recipients');
+            const recipients = await res.json();
+            const tbody = document.getElementById('recipientsBody');
+
+            if (!recipients.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No recipients added yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = recipients.map(r => `
+                <tr>
+                    <td class="ps-3">${escapeHtml(r.name || '-')}</td>
+                    <td>${escapeHtml(r.email)}</td>
+                    <td>
+                        <span class="badge ${r.is_active ? 'bg-success' : 'bg-secondary'}" style="cursor:pointer;"
+                              onclick="toggleRecipient(${r.id}, ${r.is_active ? 'false' : 'true'})">
+                            ${r.is_active ? 'Active' : 'Paused'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteRecipient(${r.id}, '${escapeHtml(r.email)}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error('Failed to load recipients:', e);
+        }
+    }
+
+    // --- Add recipient ---
+    async function addRecipient() {
+        const name = document.getElementById('newName').value.trim();
+        const email = document.getElementById('newEmail').value.trim();
+        if (!email) { alert('Please enter an email address'); return; }
+
+        try {
+            const res = await fetch('/api/recipients', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, name })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('newName').value = '';
+                document.getElementById('newEmail').value = '';
+                loadRecipients();
+            } else {
+                alert(data.error || 'Failed to add recipient');
+            }
+        } catch (e) {
+            alert('Request failed: ' + e.message);
+        }
+    }
+
+    // --- Toggle recipient ---
+    async function toggleRecipient(id, active) {
+        try {
+            await fetch(`/api/recipients/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_active: active })
+            });
+            loadRecipients();
+        } catch (e) {
+            alert('Failed to update: ' + e.message);
+        }
+    }
+
+    // --- Delete recipient ---
+    async function deleteRecipient(id, email) {
+        if (!confirm(`Remove ${email} from recipients?`)) return;
+        try {
+            await fetch(`/api/recipients/${id}`, { method: 'DELETE' });
+            loadRecipients();
+        } catch (e) {
+            alert('Failed to delete: ' + e.message);
+        }
+    }
+
+    // --- Send test email ---
+    async function sendTestEmail() {
+        const email = prompt('Send test email to:');
+        if (!email) return;
+
+        try {
+            const res = await fetch('/api/test-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const data = await res.json();
+            alert(data.success ? 'Test email sent!' : 'Failed: ' + data.error);
+        } catch (e) {
+            alert('Request failed: ' + e.message);
+        }
+    }
+
+    // --- Load scrape log ---
+    async function loadScrapeLog() {
+        try {
+            const res = await fetch('/api/scrape-log');
+            const logs = await res.json();
+            const tbody = document.getElementById('scrapeLogBody');
+
+            if (!logs.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No scrapes yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = logs.map(l => {
+                const time = l.completed_at || l.started_at;
+                const d = new Date(time + 'Z');
+                const timeStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                                d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+                let statusBadge = '';
+                if (l.status === 'success') statusBadge = '<span class="badge bg-success">OK</span>';
+                else if (l.status === 'error') statusBadge = '<span class="badge bg-danger" title="' + escapeHtml(l.error_message || '') + '">Err</span>';
+                else statusBadge = '<span class="badge bg-warning text-dark">Run</span>';
+
+                return `
+                    <tr>
+                        <td class="ps-3">${timeStr}</td>
+                        <td>${l.posts_found}</td>
+                        <td><strong>${l.new_comments_found}</strong></td>
+                        <td>${statusBadge}</td>
+                        <td>${l.email_sent ? '<i class="bi bi-check-circle text-success"></i>' : '-'}</td>
+                    </tr>`;
+            }).join('');
+        } catch (e) {
+            console.error('Failed to load scrape log:', e);
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
+    // --- Init ---
+    loadRecipients();
+    loadScrapeLog();
+</script>
+{% endblock %}

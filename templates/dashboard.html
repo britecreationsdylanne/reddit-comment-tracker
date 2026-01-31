@@ -1,0 +1,495 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - BriteCo Reddit Tracker{% endblock %}
+
+{% block content %}
+<!-- Suggest Reply Modal -->
+<div class="modal fade" id="replyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #272d3f; color: #fff;">
+                <h6 class="modal-title"><i class="bi bi-robot me-2"></i>AI Suggested Reply</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label text-muted" style="font-size: 0.8rem;">Original comment by <strong id="replyAuthor"></strong></label>
+                    <div class="p-2 bg-light rounded" style="font-size: 0.9rem;" id="replyOriginal"></div>
+                </div>
+                <div>
+                    <label class="form-label text-muted" style="font-size: 0.8rem;">Suggested reply</label>
+                    <div id="replyLoading" class="text-center py-3">
+                        <div class="spinner-border spinner-border-sm text-secondary"></div>
+                        <span class="ms-2 text-muted">Generating reply...</span>
+                    </div>
+                    <textarea class="form-control" id="replySuggestion" rows="4" style="display:none;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-sm btn-teal" onclick="copyReply()">
+                    <i class="bi bi-clipboard me-1"></i>Copy to Clipboard
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card p-3">
+            <div class="stat-label">Total Posts</div>
+            <div class="stat-number" id="statPosts">-</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3">
+            <div class="stat-label">Total Comments</div>
+            <div class="stat-number" id="statComments">-</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card highlight p-3">
+            <div class="stat-label">New Today</div>
+            <div class="stat-number" id="statNewToday">-</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card p-3">
+            <div class="stat-label">Last Scrape</div>
+            <div id="statLastScrape" style="font-size: 0.95rem; color: #555; margin-top: 8px;">-</div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="filter-bar d-flex flex-wrap align-items-end gap-3">
+    <div>
+        <label class="form-label mb-1" style="font-size: 0.8rem; color: #888;">Post</label>
+        <select class="form-select form-select-sm" id="filterPost" style="min-width: 220px;">
+            <option value="">All Posts</option>
+        </select>
+    </div>
+    <div>
+        <label class="form-label mb-1" style="font-size: 0.8rem; color: #888;">Sentiment</label>
+        <select class="form-select form-select-sm" id="filterSentiment">
+            <option value="">All</option>
+            <option value="positive">Positive</option>
+            <option value="negative">Negative</option>
+            <option value="question">Question</option>
+            <option value="neutral">Neutral</option>
+        </select>
+    </div>
+    <div>
+        <label class="form-label mb-1" style="font-size: 0.8rem; color: #888;">Status</label>
+        <select class="form-select form-select-sm" id="filterReplyStatus">
+            <option value="">All</option>
+            <option value="needs_reply">Needs Reply</option>
+            <option value="replied">Replied</option>
+            <option value="ignored">Ignored</option>
+        </select>
+    </div>
+    <div>
+        <label class="form-label mb-1" style="font-size: 0.8rem; color: #888;">From</label>
+        <input type="date" class="form-control form-control-sm" id="filterDateFrom">
+    </div>
+    <div>
+        <label class="form-label mb-1" style="font-size: 0.8rem; color: #888;">To</label>
+        <input type="date" class="form-control form-control-sm" id="filterDateTo">
+    </div>
+    <div>
+        <button class="btn btn-sm btn-teal" onclick="applyFilters()">
+            <i class="bi bi-funnel-fill me-1"></i>Apply
+        </button>
+        <button class="btn btn-sm btn-outline-secondary ms-1" onclick="clearFilters()">Clear</button>
+    </div>
+    <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary" onclick="runSentimentAnalysis()" id="btnSentiment" title="Analyze sentiment with AI">
+            <i class="bi bi-emoji-smile me-1"></i>Analyze Sentiment
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="exportCSV()" title="Export filtered comments to CSV">
+            <i class="bi bi-download me-1"></i>Export CSV
+        </button>
+        <button class="btn btn-sm btn-outline-teal" id="btnScrape" onclick="runScrape()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Run Scrape Now
+        </button>
+    </div>
+</div>
+
+<!-- Comments Table -->
+<div class="comments-table mt-3">
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th>Post</th>
+                <th>Comment</th>
+                <th>Author</th>
+                <th>Sentiment</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th style="width: 110px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="commentsBody">
+            <tr>
+                <td colspan="7" class="empty-state">
+                    <i class="bi bi-chat-dots"></i>
+                    <p>No comments yet. Click "Run Scrape Now" to fetch data.</p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+<nav class="mt-3 d-flex justify-content-between align-items-center">
+    <div class="text-muted" style="font-size: 0.85rem;" id="paginationInfo">-</div>
+    <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
+</nav>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentPage = 1;
+    const perPage = 25;
+
+    const sentimentColors = {
+        positive: 'success',
+        negative: 'danger',
+        question: 'warning',
+        neutral: 'secondary'
+    };
+    const sentimentIcons = {
+        positive: 'bi-emoji-smile',
+        negative: 'bi-emoji-frown',
+        question: 'bi-question-circle',
+        neutral: 'bi-dash-circle'
+    };
+    const statusColors = {
+        needs_reply: 'info',
+        replied: 'success',
+        ignored: 'secondary'
+    };
+    const statusLabels = {
+        needs_reply: 'Needs Reply',
+        replied: 'Replied',
+        ignored: 'Ignored'
+    };
+
+    // --- Load stats ---
+    async function loadStats() {
+        try {
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+            document.getElementById('statPosts').textContent = data.total_posts;
+            document.getElementById('statComments').textContent = data.total_comments;
+            document.getElementById('statNewToday').textContent = data.new_today;
+
+            if (data.last_scrape) {
+                const d = new Date(data.last_scrape.completed_at + 'Z');
+                const statusClass = data.last_scrape.status === 'success' ? 'success' : 'error';
+                document.getElementById('statLastScrape').innerHTML =
+                    `<span class="status-dot ${statusClass}"></span>${timeAgo(d)}`;
+            } else {
+                document.getElementById('statLastScrape').textContent = 'Never';
+            }
+        } catch (e) {
+            console.error('Failed to load stats:', e);
+        }
+    }
+
+    // --- Load posts for filter dropdown ---
+    async function loadPosts() {
+        try {
+            const res = await fetch('/api/posts');
+            const posts = await res.json();
+            const select = document.getElementById('filterPost');
+            posts.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                const title = p.title.length > 50 ? p.title.substring(0, 50) + '...' : p.title;
+                opt.textContent = `${title} (${p.comment_count} comments)`;
+                select.appendChild(opt);
+            });
+        } catch (e) {
+            console.error('Failed to load posts:', e);
+        }
+    }
+
+    // --- Build filter URL params ---
+    function getFilterParams() {
+        const postId = document.getElementById('filterPost').value;
+        const dateFrom = document.getElementById('filterDateFrom').value;
+        const dateTo = document.getElementById('filterDateTo').value;
+        const sentiment = document.getElementById('filterSentiment').value;
+        const replyStatus = document.getElementById('filterReplyStatus').value;
+
+        let params = '';
+        if (postId) params += `&post_id=${encodeURIComponent(postId)}`;
+        if (dateFrom) params += `&date_from=${dateFrom}`;
+        if (dateTo) params += `&date_to=${dateTo}`;
+        if (sentiment) params += `&sentiment=${sentiment}`;
+        if (replyStatus) params += `&reply_status=${replyStatus}`;
+        return params;
+    }
+
+    // --- Load comments ---
+    async function loadComments(page = 1) {
+        currentPage = page;
+        let url = `/api/comments?page=${page}&per_page=${perPage}${getFilterParams()}`;
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            renderComments(data.comments);
+            renderPagination(data.page, data.total_pages, data.total);
+        } catch (e) {
+            console.error('Failed to load comments:', e);
+        }
+    }
+
+    function renderComments(comments) {
+        const tbody = document.getElementById('commentsBody');
+
+        if (!comments.length) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="empty-state">
+                        <i class="bi bi-chat-dots"></i>
+                        <p>No comments found matching your filters.</p>
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        tbody.innerHTML = comments.map(c => {
+            const date = new Date(c.created_utc * 1000);
+            const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const postTitle = c.post_title.length > 40 ? c.post_title.substring(0, 40) + '...' : c.post_title;
+            const body = c.body.length > 100 ? c.body.substring(0, 100) + '...' : c.body;
+            const redditLink = c.post_url || '#';
+
+            const sent = c.sentiment || 'neutral';
+            const sentColor = sentimentColors[sent] || 'secondary';
+            const sentIcon = sentimentIcons[sent] || 'bi-dash-circle';
+
+            const status = c.reply_status || 'needs_reply';
+            const statColor = statusColors[status] || 'secondary';
+            const statLabel = statusLabels[status] || status;
+
+            // Build status dropdown options
+            const statusOpts = ['needs_reply', 'replied', 'ignored'].map(s =>
+                `<li><a class="dropdown-item ${s === status ? 'active' : ''}" href="#" onclick="setReplyStatus('${c.id}', '${s}'); return false;">${statusLabels[s]}</a></li>`
+            ).join('');
+
+            return `
+                <tr>
+                    <td>
+                        <div style="font-weight: 500; font-size: 0.85rem;">${escapeHtml(postTitle)}</div>
+                        <span class="badge-subreddit">r/${escapeHtml(c.subreddit)}</span>
+                    </td>
+                    <td class="comment-body" title="${escapeHtml(c.body)}" style="max-width: 300px;">${escapeHtml(body)}</td>
+                    <td><strong style="font-size: 0.85rem;">u/${escapeHtml(c.author || '[deleted]')}</strong></td>
+                    <td>
+                        <span class="badge bg-${sentColor}" style="font-size: 0.75rem;">
+                            <i class="bi ${sentIcon} me-1"></i>${sent}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-${statColor} dropdown-toggle" data-bs-toggle="dropdown" style="font-size: 0.75rem;">
+                                ${statLabel}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-sm">${statusOpts}</ul>
+                        </div>
+                    </td>
+                    <td style="white-space: nowrap; font-size: 0.8rem; color: #666;">${dateStr}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-teal" title="Suggest Reply" onclick="openSuggestReply('${escapeAttr(c.body)}', '${escapeAttr(c.post_title)}', '${escapeAttr(c.author || '')}')">
+                                <i class="bi bi-robot"></i>
+                            </button>
+                            <a href="${escapeHtml(redditLink)}" target="_blank" class="btn btn-sm btn-outline-secondary" title="View on Reddit">
+                                <i class="bi bi-box-arrow-up-right"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>`;
+        }).join('');
+    }
+
+    function renderPagination(page, totalPages, total) {
+        const info = document.getElementById('paginationInfo');
+        const start = (page - 1) * perPage + 1;
+        const end = Math.min(page * perPage, total);
+        info.textContent = total > 0 ? `Showing ${start}-${end} of ${total} comments` : 'No comments';
+
+        const nav = document.getElementById('pagination');
+        if (totalPages <= 1) { nav.innerHTML = ''; return; }
+
+        let html = '';
+        html += `<li class="page-item ${page === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadComments(${page-1}); return false;">&laquo;</a>
+                 </li>`;
+
+        for (let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++) {
+            html += `<li class="page-item ${i === page ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="loadComments(${i}); return false;">${i}</a>
+                     </li>`;
+        }
+
+        html += `<li class="page-item ${page === totalPages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="loadComments(${page+1}); return false;">&raquo;</a>
+                 </li>`;
+
+        nav.innerHTML = html;
+    }
+
+    // --- Actions ---
+    function applyFilters() { loadComments(1); }
+
+    function clearFilters() {
+        document.getElementById('filterPost').value = '';
+        document.getElementById('filterDateFrom').value = '';
+        document.getElementById('filterDateTo').value = '';
+        document.getElementById('filterSentiment').value = '';
+        document.getElementById('filterReplyStatus').value = '';
+        loadComments(1);
+    }
+
+    async function setReplyStatus(commentId, status) {
+        try {
+            await fetch(`/api/comments/${commentId}/reply-status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reply_status: status })
+            });
+            loadComments(currentPage);
+        } catch (e) {
+            alert('Failed to update status: ' + e.message);
+        }
+    }
+
+    // --- AI Suggest Reply ---
+    async function openSuggestReply(body, postTitle, author) {
+        document.getElementById('replyAuthor').textContent = 'u/' + author;
+        document.getElementById('replyOriginal').textContent = body;
+        document.getElementById('replyLoading').style.display = 'block';
+        document.getElementById('replySuggestion').style.display = 'none';
+
+        const modal = new bootstrap.Modal(document.getElementById('replyModal'));
+        modal.show();
+
+        try {
+            const res = await fetch('/api/ai/suggest-reply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comment_body: body, post_title: postTitle, author: author })
+            });
+            const data = await res.json();
+
+            document.getElementById('replyLoading').style.display = 'none';
+            const textarea = document.getElementById('replySuggestion');
+            textarea.style.display = 'block';
+
+            if (data.success) {
+                textarea.value = data.reply;
+            } else {
+                textarea.value = 'Error: ' + (data.error || 'Failed to generate reply');
+            }
+        } catch (e) {
+            document.getElementById('replyLoading').style.display = 'none';
+            document.getElementById('replySuggestion').style.display = 'block';
+            document.getElementById('replySuggestion').value = 'Request failed: ' + e.message;
+        }
+    }
+
+    function copyReply() {
+        const text = document.getElementById('replySuggestion').value;
+        navigator.clipboard.writeText(text).then(() => {
+            alert('Reply copied to clipboard!');
+        });
+    }
+
+    // --- Sentiment Analysis ---
+    async function runSentimentAnalysis() {
+        const btn = document.getElementById('btnSentiment');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Analyzing...';
+
+        try {
+            const res = await fetch('/api/ai/analyze-sentiment', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                alert(`Analyzed ${data.analyzed} comments`);
+                loadComments(currentPage);
+            } else {
+                alert('Failed: ' + (data.error || 'Unknown error'));
+            }
+        } catch (e) {
+            alert('Request failed: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-emoji-smile me-1"></i>Analyze Sentiment';
+        }
+    }
+
+    // --- CSV Export ---
+    function exportCSV() {
+        let url = `/api/export/csv?${getFilterParams().substring(1)}`;
+        window.location.href = url;
+    }
+
+    // --- Scrape ---
+    async function runScrape() {
+        const btn = document.getElementById('btnScrape');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scraping...';
+
+        try {
+            const res = await fetch('/api/scrape/run', { method: 'POST' });
+            const data = await res.json();
+
+            if (data.success) {
+                const msg = `Found ${data.new_comments} new comment${data.new_comments !== 1 ? 's' : ''} across ${data.posts_found} posts`;
+                alert(msg);
+                loadStats();
+                loadComments(1);
+                document.getElementById('filterPost').innerHTML = '<option value="">All Posts</option>';
+                loadPosts();
+            } else {
+                alert('Scrape failed: ' + (data.error || 'Unknown error'));
+            }
+        } catch (e) {
+            alert('Scrape request failed: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Run Scrape Now';
+        }
+    }
+
+    // --- Helpers ---
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
+    function escapeAttr(text) {
+        return (text || '').replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
+    }
+
+    function timeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+        if (seconds < 60) return 'just now';
+        if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+        if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+        return Math.floor(seconds / 86400) + 'd ago';
+    }
+
+    // --- Init ---
+    loadStats();
+    loadPosts();
+    loadComments(1);
+</script>
+{% endblock %}
