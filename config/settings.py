@@ -7,7 +7,7 @@ load_dotenv()
 REDDIT_CLIENT_ID = os.getenv('REDDIT_CLIENT_ID', '')
 REDDIT_CLIENT_SECRET = os.getenv('REDDIT_CLIENT_SECRET', '')
 REDDIT_USER_AGENT = os.getenv('REDDIT_USER_AGENT', 'BriteCo Comment Tracker v1.0')
-REDDIT_USERNAME = os.getenv('REDDIT_USERNAME', 'BriteCo_Insurance')
+REDDIT_USERNAME = os.getenv('REDDIT_USERNAME', '') or 'BriteCo_Insurance'
 
 # Scraper schedule (24-hour format)
 SCRAPE_HOUR = int(os.getenv('SCRAPE_HOUR', '8'))

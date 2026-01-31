@@ -13,23 +13,52 @@ from backend.database import insert_post, insert_comment, log_scrape_start, log_
 # --- Public JSON Scraper (no API key needed) ---
 
 def _fetch_json(url, max_retries=3):
-    """Fetch a Reddit JSON endpoint with rate-limit handling and retries."""
-    headers = {'User-Agent': REDDIT_USER_AGENT}
+    """Fetch a Reddit JSON endpoint with rate-limit handling and retries.
 
-    for attempt in range(max_retries):
-        response = requests.get(url, headers=headers, timeout=30)
+    Tries old.reddit.com first (less aggressive blocking from cloud IPs),
+    then falls back to www.reddit.com.
+    """
+    headers = {
+        'User-Agent': REDDIT_USER_AGENT,
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+    }
 
-        if response.status_code == 429:
-            wait = 10 * (attempt + 1)
-            print(f"[Scraper] Rate limited, waiting {wait}s before retry...")
-            time.sleep(wait)
-            continue
+    # Try old.reddit.com first (less likely to block cloud IPs)
+    urls_to_try = [url]
+    if 'www.reddit.com' in url:
+        urls_to_try.insert(0, url.replace('www.reddit.com', 'old.reddit.com'))
 
-        response.raise_for_status()
-        time.sleep(2)  # 2 seconds between requests to stay under rate limits
-        return response.json()
+    last_error = None
+    for try_url in urls_to_try:
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(try_url, headers=headers, timeout=30)
 
-    response.raise_for_status()  # raise on final failure
+                if response.status_code == 429:
+                    wait = 10 * (attempt + 1)
+                    print(f"[Scraper] Rate limited, waiting {wait}s before retry...")
+                    time.sleep(wait)
+                    continue
+
+                if response.status_code == 403:
+                    print(f"[Scraper] 403 Blocked for {try_url}, trying next option...")
+                    last_error = requests.exceptions.HTTPError(
+                        f"403 Client Error: Blocked for url: {try_url}", response=response
+                    )
+                    break  # try next URL variant
+
+                response.raise_for_status()
+                time.sleep(2)
+                return response.json()
+            except requests.exceptions.ConnectionError as e:
+                last_error = e
+                break  # try next URL variant
+
+    # If all URLs failed, raise the last error
+    if last_error:
+        raise last_error
+    raise requests.exceptions.HTTPError("All Reddit endpoints returned errors")
 
 
 def _discover_posts_from_comments():
@@ -342,5 +371,11 @@ def run_scrape():
         return posts_found, new_comments
 
     except Exception as e:
-        log_scrape_end(log_id, status='error', error_message=str(e))
+        error_msg = str(e)
+        if '403' in error_msg:
+            error_msg = (
+                f"{error_msg} — Reddit may be blocking requests from cloud IPs. "
+                "Set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET to use the official API instead."
+            )
+        log_scrape_end(log_id, status='error', error_message=error_msg)
         raise
