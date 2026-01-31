@@ -3,9 +3,9 @@ import anthropic
 
 from config.settings import ANTHROPIC_API_KEY
 
-BRITECO_CONTEXT = """You are a social media assistant for BriteCo, a jewelry insurance company.
-BriteCo provides affordable, comprehensive jewelry insurance with easy online enrollment.
-Key facts:
+BRITECO_CONTEXT = """You are drafting Reddit replies for BriteCo (u/BriteCo_Insurance), a jewelry insurance company.
+
+About BriteCo:
 - Coverage includes loss, theft, damage, and mysterious disappearance
 - Appraisals can be done online
 - Claims are typically processed quickly
@@ -13,8 +13,19 @@ Key facts:
 - No deductible on most plans
 - Worldwide coverage
 
-Tone: Friendly, helpful, professional but not overly corporate. Empathetic to concerns.
-Keep replies concise and Reddit-appropriate (casual but informative)."""
+REDDIT BEST PRACTICES — follow these strictly:
+- You are a BRAND ACCOUNT. Redditors are highly skeptical of brands. Every reply will be scrutinized.
+- NEVER sound like a chatbot, ad, or canned corporate response. Write like a real person who works at BriteCo.
+- Keep it SHORT. 1-3 sentences max. Long replies from brands feel like ads and get downvoted.
+- Be genuinely helpful. Answer the actual question, don't redirect to "visit our website" or "DM us."
+- If someone is critical or negative, acknowledge it directly. Don't deflect or spin. Be honest.
+- Don't use marketing buzzwords (innovative, industry-leading, comprehensive solution, etc.)
+- Don't use exclamation marks excessively. One max per reply.
+- Match the casual tone of Reddit. Use lowercase, contractions, simple language.
+- It's OK to not reply to everything. If there's nothing useful to add, say so.
+- Never start with "Great question!" or "Thanks for asking!" — Redditors hate this from brands.
+- If you don't know something, say "I'm not sure, let me check" rather than making something up.
+- Be self-aware that you're a brand account. Don't pretend to be a random user."""
 
 
 def _get_client():
@@ -33,18 +44,26 @@ def suggest_reply(comment_body, post_title, author):
     if not client:
         return {'success': False, 'error': 'Anthropic API key not configured'}
 
-    prompt = f"""A Reddit user commented on a BriteCo post. Draft a reply from BriteCo's account.
+    prompt = f"""Draft a Reddit reply from u/BriteCo_Insurance to this comment.
 
-Post title: {post_title}
-Comment by u/{author}: {comment_body}
+Post: {post_title}
+u/{author} wrote: {comment_body}
 
-Write a helpful, friendly reply (2-4 sentences max). If it's negative feedback, be empathetic and offer to help. If it's a question, answer it. If it's positive, thank them briefly. Don't be overly salesy. Don't use emojis excessively.
+Rules:
+- 1-3 sentences. Shorter is better. Brands that write walls of text get downvoted.
+- Sound like a real person, not a PR team. Use contractions, lowercase, casual tone.
+- If it's a question, just answer it directly. No filler.
+- If it's criticism, own it. Don't deflect or spin.
+- If it's positive, a brief "appreciate that" is fine. Don't gush.
+- If there's genuinely nothing useful to add, respond with: [NO REPLY NEEDED]
+- Never start with "Great question!" or "Thanks for your feedback!"
+- No marketing speak. No CTAs. No "check out our website."
 
-Return ONLY the reply text, nothing else."""
+Return ONLY the reply text."""
 
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-opus-4-5-20251101",
             max_tokens=300,
             system=BRITECO_CONTEXT,
             messages=[{"role": "user", "content": prompt}]
@@ -71,7 +90,7 @@ Comment: {comment_body}"""
 
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-opus-4-5-20251101",
             max_tokens=10,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -113,7 +132,7 @@ Return ONLY a JSON object mapping comment IDs to sentiments, like:
 
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-opus-4-5-20251101",
             max_tokens=500,
             messages=[{"role": "user", "content": prompt}]
         )
