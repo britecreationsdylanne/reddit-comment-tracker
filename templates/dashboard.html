@@ -62,57 +62,9 @@
     </div>
 </div>
 
-<!-- Filter Bar -->
-<div class="filter-bar d-flex flex-wrap align-items-end gap-3">
-    <div>
-        <label class="form-label mb-1" style="font-size: 0.8rem; color: #888;">Post</label>
-        <select class="form-select form-select-sm" id="filterPost" style="min-width: 220px;">
-            <option value="">All Posts</option>
-        </select>
-    </div>
-    <div>
-        <label class="form-label mb-1" style="font-size: 0.8rem; color: #888;">Sentiment</label>
-        <select class="form-select form-select-sm" id="filterSentiment">
-            <option value="">All</option>
-            <option value="positive">Positive</option>
-            <option value="negative">Negative</option>
-            <option value="question">Question</option>
-            <option value="neutral">Neutral</option>
-        </select>
-    </div>
-    <div>
-        <label class="form-label mb-1" style="font-size: 0.8rem; color: #888;">Status</label>
-        <select class="form-select form-select-sm" id="filterReplyStatus">
-            <option value="">All</option>
-            <option value="needs_reply">Needs Reply</option>
-            <option value="replied">Replied</option>
-            <option value="ignored">Ignored</option>
-        </select>
-    </div>
-    <div>
-        <label class="form-label mb-1" style="font-size: 0.8rem; color: #888;">From</label>
-        <input type="date" class="form-control form-control-sm" id="filterDateFrom">
-    </div>
-    <div>
-        <label class="form-label mb-1" style="font-size: 0.8rem; color: #888;">To</label>
-        <input type="date" class="form-control form-control-sm" id="filterDateTo">
-    </div>
-    <div>
-        <label class="form-label mb-1" style="font-size: 0.8rem; color: #888;">Sort by</label>
-        <select class="form-select form-select-sm" id="filterSortBy" onchange="applyFilters()">
-            <option value="date_desc">Date (newest)</option>
-            <option value="date_asc">Date (oldest)</option>
-            <option value="sentiment">Sentiment</option>
-            <option value="post">Post</option>
-            <option value="author">Author</option>
-        </select>
-    </div>
-    <div>
-        <button class="btn btn-sm btn-teal" onclick="applyFilters()">
-            <i class="bi bi-funnel-fill me-1"></i>Apply
-        </button>
-        <button class="btn btn-sm btn-outline-secondary ms-1" onclick="clearFilters()">Clear</button>
-    </div>
+<!-- Toolbar -->
+<div class="filter-bar d-flex align-items-center gap-2">
+    <div id="activeFilters" class="d-flex flex-wrap gap-1"></div>
     <div class="ms-auto d-flex gap-2">
         <button class="btn btn-sm btn-outline-secondary" onclick="runSentimentAnalysis()" id="btnSentiment" title="Analyze sentiment with AI">
             <i class="bi bi-emoji-smile me-1"></i>Analyze Sentiment
@@ -123,17 +75,95 @@
     </div>
 </div>
 
+<!-- Hidden filter state elements -->
+<select class="d-none" id="filterPost"><option value="">All Posts</option></select>
+<input type="hidden" id="filterSentiment" value="">
+<input type="hidden" id="filterReplyStatus" value="">
+<input type="hidden" id="filterDateFrom" value="">
+<input type="hidden" id="filterDateTo" value="">
+<input type="hidden" id="filterSortBy" value="date_desc">
+
 <!-- Comments Table -->
 <div class="comments-table mt-3">
     <table class="table table-hover mb-0">
         <thead>
             <tr>
-                <th>Post</th>
+                <th class="col-header" data-col="post">
+                    <div class="dropdown d-inline">
+                        <span class="col-header-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button">
+                            Post <i class="bi bi-chevron-down ms-1" style="font-size: 0.65rem;"></i>
+                        </span>
+                        <div class="dropdown-menu col-dropdown p-2" style="min-width: 240px;">
+                            <div class="mb-2"><small class="text-muted fw-bold">SORT</small></div>
+                            <a class="dropdown-item rounded" href="#" onclick="setSort('post'); return false;"><i class="bi bi-sort-alpha-down me-2"></i>Sort A-Z</a>
+                            <hr class="my-2">
+                            <div class="mb-2"><small class="text-muted fw-bold">FILTER BY POST</small></div>
+                            <select class="form-select form-select-sm" id="headerFilterPost" onchange="setFilter('post', this.value)">
+                                <option value="">All Posts</option>
+                            </select>
+                        </div>
+                    </div>
+                </th>
                 <th>Comment</th>
-                <th>Author</th>
-                <th>Sentiment</th>
-                <th>Status</th>
-                <th>Date</th>
+                <th class="col-header" data-col="author">
+                    <div class="dropdown d-inline">
+                        <span class="col-header-btn" data-bs-toggle="dropdown" role="button">
+                            Author <i class="bi bi-chevron-down ms-1" style="font-size: 0.65rem;"></i>
+                        </span>
+                        <div class="dropdown-menu col-dropdown p-2">
+                            <a class="dropdown-item rounded" href="#" onclick="setSort('author'); return false;"><i class="bi bi-sort-alpha-down me-2"></i>Sort A-Z</a>
+                        </div>
+                    </div>
+                </th>
+                <th class="col-header" data-col="sentiment">
+                    <div class="dropdown d-inline">
+                        <span class="col-header-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button">
+                            Sentiment <i class="bi bi-chevron-down ms-1" style="font-size: 0.65rem;"></i>
+                        </span>
+                        <div class="dropdown-menu col-dropdown p-2">
+                            <div class="mb-2"><small class="text-muted fw-bold">SORT</small></div>
+                            <a class="dropdown-item rounded" href="#" onclick="setSort('sentiment'); return false;"><i class="bi bi-sort-down me-2"></i>Sort by Sentiment</a>
+                            <hr class="my-2">
+                            <div class="mb-2"><small class="text-muted fw-bold">FILTER</small></div>
+                            <a class="dropdown-item rounded" href="#" onclick="setFilter('sentiment', ''); return false;"><i class="bi bi-circle me-2"></i>All</a>
+                            <a class="dropdown-item rounded" href="#" onclick="setFilter('sentiment', 'positive'); return false;"><i class="bi bi-emoji-smile text-success me-2"></i>Positive</a>
+                            <a class="dropdown-item rounded" href="#" onclick="setFilter('sentiment', 'negative'); return false;"><i class="bi bi-emoji-frown text-danger me-2"></i>Negative</a>
+                            <a class="dropdown-item rounded" href="#" onclick="setFilter('sentiment', 'question'); return false;"><i class="bi bi-question-circle text-warning me-2"></i>Question</a>
+                            <a class="dropdown-item rounded" href="#" onclick="setFilter('sentiment', 'neutral'); return false;"><i class="bi bi-dash-circle text-secondary me-2"></i>Neutral</a>
+                        </div>
+                    </div>
+                </th>
+                <th class="col-header" data-col="status">
+                    <div class="dropdown d-inline">
+                        <span class="col-header-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button">
+                            Status <i class="bi bi-chevron-down ms-1" style="font-size: 0.65rem;"></i>
+                        </span>
+                        <div class="dropdown-menu col-dropdown p-2">
+                            <a class="dropdown-item rounded" href="#" onclick="setFilter('status', ''); return false;"><i class="bi bi-circle me-2"></i>All</a>
+                            <a class="dropdown-item rounded" href="#" onclick="setFilter('status', 'needs_reply'); return false;"><i class="bi bi-chat-dots text-info me-2"></i>Needs Reply</a>
+                            <a class="dropdown-item rounded" href="#" onclick="setFilter('status', 'replied'); return false;"><i class="bi bi-check-circle text-success me-2"></i>Replied</a>
+                            <a class="dropdown-item rounded" href="#" onclick="setFilter('status', 'ignored'); return false;"><i class="bi bi-x-circle text-secondary me-2"></i>Ignored</a>
+                        </div>
+                    </div>
+                </th>
+                <th class="col-header" data-col="date">
+                    <div class="dropdown d-inline">
+                        <span class="col-header-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button">
+                            Date <i class="bi bi-chevron-down ms-1" style="font-size: 0.65rem;"></i>
+                        </span>
+                        <div class="dropdown-menu col-dropdown p-2">
+                            <div class="mb-2"><small class="text-muted fw-bold">SORT</small></div>
+                            <a class="dropdown-item rounded" href="#" onclick="setSort('date_desc'); return false;"><i class="bi bi-sort-down me-2"></i>Newest first</a>
+                            <a class="dropdown-item rounded" href="#" onclick="setSort('date_asc'); return false;"><i class="bi bi-sort-up me-2"></i>Oldest first</a>
+                            <hr class="my-2">
+                            <div class="mb-2"><small class="text-muted fw-bold">DATE RANGE</small></div>
+                            <label class="form-label mb-1" style="font-size: 0.75rem;">From</label>
+                            <input type="date" class="form-control form-control-sm mb-2" id="headerDateFrom" onchange="setFilter('dateFrom', this.value)">
+                            <label class="form-label mb-1" style="font-size: 0.75rem;">To</label>
+                            <input type="date" class="form-control form-control-sm" id="headerDateTo" onchange="setFilter('dateTo', this.value)">
+                        </div>
+                    </div>
+                </th>
                 <th style="width: 110px;">Actions</th>
             </tr>
         </thead>
@@ -141,7 +171,7 @@
             <tr>
                 <td colspan="7" class="empty-state">
                     <i class="bi bi-chat-dots"></i>
-                    <p>No comments yet. Click "Run Scrape Now" to fetch data.</p>
+                    <p>No comments yet. Data will sync automatically.</p>
                 </td>
             </tr>
         </tbody>
@@ -210,17 +240,85 @@
         try {
             const res = await fetch('/api/posts');
             const posts = await res.json();
-            const select = document.getElementById('filterPost');
-            posts.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                const title = p.title.length > 50 ? p.title.substring(0, 50) + '...' : p.title;
-                opt.textContent = `${title} (${p.comment_count} comments)`;
-                select.appendChild(opt);
+            const selects = [document.getElementById('filterPost'), document.getElementById('headerFilterPost')];
+            selects.forEach(select => {
+                if (!select) return;
+                const current = select.value;
+                select.innerHTML = '<option value="">All Posts</option>';
+                posts.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    const title = p.title.length > 45 ? p.title.substring(0, 45) + '...' : p.title;
+                    opt.textContent = `${title} (${p.comment_count})`;
+                    select.appendChild(opt);
+                });
+                select.value = current;
             });
         } catch (e) {
             console.error('Failed to load posts:', e);
         }
+    }
+
+    // --- Column header filter/sort actions ---
+    function setSort(sortBy) {
+        document.getElementById('filterSortBy').value = sortBy;
+        loadComments(1);
+        updateActiveFilters();
+    }
+
+    function setFilter(type, value) {
+        if (type === 'post') {
+            document.getElementById('filterPost').value = value;
+            document.getElementById('headerFilterPost').value = value;
+        } else if (type === 'sentiment') {
+            document.getElementById('filterSentiment').value = value;
+        } else if (type === 'status') {
+            document.getElementById('filterReplyStatus').value = value;
+        } else if (type === 'dateFrom') {
+            document.getElementById('filterDateFrom').value = value;
+        } else if (type === 'dateTo') {
+            document.getElementById('filterDateTo').value = value;
+        }
+        loadComments(1);
+        updateActiveFilters();
+    }
+
+    function updateActiveFilters() {
+        const container = document.getElementById('activeFilters');
+        let chips = [];
+        const post = document.getElementById('filterPost');
+        const postVal = post.value;
+        if (postVal) {
+            const postText = post.options[post.selectedIndex]?.textContent || 'Post';
+            chips.push({label: postText, clear: () => setFilter('post', '')});
+        }
+        const sent = document.getElementById('filterSentiment').value;
+        if (sent) chips.push({label: `Sentiment: ${sent}`, clear: () => setFilter('sentiment', '')});
+        const status = document.getElementById('filterReplyStatus').value;
+        if (status) chips.push({label: `Status: ${status.replace('_', ' ')}`, clear: () => setFilter('status', '')});
+        const df = document.getElementById('filterDateFrom').value;
+        if (df) chips.push({label: `From: ${df}`, clear: () => { document.getElementById('headerDateFrom').value = ''; setFilter('dateFrom', ''); }});
+        const dt = document.getElementById('filterDateTo').value;
+        if (dt) chips.push({label: `To: ${dt}`, clear: () => { document.getElementById('headerDateTo').value = ''; setFilter('dateTo', ''); }});
+        const sort = document.getElementById('filterSortBy').value;
+        if (sort !== 'date_desc') {
+            const sortLabels = {date_asc: 'Oldest first', sentiment: 'By sentiment', post: 'By post', author: 'By author'};
+            chips.push({label: `Sort: ${sortLabels[sort] || sort}`, clear: () => setSort('date_desc')});
+        }
+
+        if (chips.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        container.innerHTML = chips.map((c, i) =>
+            `<span class="badge bg-light text-dark border" style="font-size: 0.75rem; font-weight: 500;">
+                ${escapeHtml(c.label)}
+                <i class="bi bi-x ms-1" role="button" onclick="activeFilterClear[${i}]()"></i>
+            </span>`
+        ).join('') + `<span class="badge bg-transparent text-teal" role="button" style="font-size: 0.75rem; cursor:pointer;" onclick="clearFilters()">Clear all</span>`;
+
+        window.activeFilterClear = chips.map(c => c.clear);
     }
 
     // --- Build filter URL params ---
@@ -364,7 +462,14 @@
         document.getElementById('filterSentiment').value = '';
         document.getElementById('filterReplyStatus').value = '';
         document.getElementById('filterSortBy').value = 'date_desc';
+        const hp = document.getElementById('headerFilterPost');
+        if (hp) hp.value = '';
+        const hdf = document.getElementById('headerDateFrom');
+        if (hdf) hdf.value = '';
+        const hdt = document.getElementById('headerDateTo');
+        if (hdt) hdt.value = '';
         loadComments(1);
+        updateActiveFilters();
     }
 
     async function setReplyStatus(commentId, status) {

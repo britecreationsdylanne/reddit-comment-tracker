@@ -89,13 +89,45 @@ body {
     overflow: visible;
 }
 
-/* Filter bar */
+/* Filter bar / toolbar */
 .filter-bar {
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    padding: 16px 20px;
+    padding: 10px 20px;
     margin-bottom: 20px;
+    min-height: 48px;
+}
+
+/* Column header dropdowns */
+.col-header-btn {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.col-header-btn:hover {
+    color: var(--bc-teal-light);
+}
+
+.col-dropdown {
+    font-size: 0.85rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    border: 1px solid #e0e0e0;
+}
+
+.col-dropdown .dropdown-item {
+    font-size: 0.82rem;
+    padding: 5px 10px;
+}
+
+.col-dropdown .dropdown-item:hover {
+    background-color: #e8f5f5;
+    color: var(--bc-teal);
+}
+
+.text-teal {
+    color: var(--bc-teal) !important;
 }
 
 /* Badges */

@@ -2,9 +2,13 @@ import os
 import sys
 import csv
 import io
+import json
+import secrets
 from datetime import datetime, timezone
-from flask import Flask, request, jsonify, render_template, Response
+from flask import Flask, request, jsonify, render_template, Response, redirect, url_for, session
 from flask_cors import CORS
+from authlib.integrations.flask_client import OAuth
+from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -30,7 +34,31 @@ from backend.ai_helper import suggest_reply, batch_analyze_sentiment
 from backend.gcs_backup import restore_db, backup_db
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 CORS(app)
+
+# Session configuration for OAuth (Cloud Run compatible)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY') or secrets.token_hex(32)
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+# Google OAuth
+ALLOWED_DOMAIN = 'brite.co'
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'}
+)
+
+
+def get_current_user():
+    """Get current authenticated user from session."""
+    return session.get('user')
+
 
 # Restore database from GCS (if configured) before init
 restore_db()
@@ -44,16 +72,75 @@ init_scheduler(app)
 
 
 # ========================================
-# Page Routes
+# Auth Routes
+# ========================================
+
+@app.route('/auth/login')
+def auth_login():
+    """Redirect to Google OAuth."""
+    if get_current_user():
+        return redirect('/')
+    redirect_uri = url_for('auth_callback', _external=True)
+    return google.authorize_redirect(redirect_uri)
+
+
+@app.route('/auth/callback')
+def auth_callback():
+    """Handle OAuth callback from Google."""
+    try:
+        token = google.authorize_access_token()
+        user_info = token.get('userinfo')
+
+        if not user_info:
+            return 'Failed to get user info', 400
+
+        email = user_info.get('email', '')
+
+        if not email.endswith(f'@{ALLOWED_DOMAIN}'):
+            return (
+                '<div style="font-family:system-ui;max-width:400px;margin:80px auto;text-align:center;">'
+                '<h2>Access Denied</h2>'
+                f'<p>Only @{ALLOWED_DOMAIN} accounts are allowed.</p>'
+                f'<p style="color:#888;">You signed in as {email}</p>'
+                '<a href="/auth/login">Try again</a></div>'
+            ), 403
+
+        session['user'] = {
+            'email': email,
+            'name': user_info.get('name', ''),
+            'picture': user_info.get('picture', '')
+        }
+
+        return redirect('/')
+    except Exception as e:
+        print(f"[AUTH ERROR] OAuth callback failed: {e}")
+        return f'Authentication failed: {str(e)}', 500
+
+
+@app.route('/auth/logout')
+def auth_logout():
+    """Clear session and redirect to login."""
+    session.pop('user', None)
+    return redirect('/auth/login')
+
+
+# ========================================
+# Page Routes (protected)
 # ========================================
 
 @app.route('/')
 def dashboard():
-    return render_template('dashboard.html', active_page='dashboard')
+    user = get_current_user()
+    if not user:
+        return redirect('/auth/login')
+    return render_template('dashboard.html', active_page='dashboard', user=user)
 
 
 @app.route('/settings')
 def settings_page():
+    user = get_current_user()
+    if not user:
+        return redirect('/auth/login')
     schedule_time = f"{SCRAPE_HOUR:02d}:{SCRAPE_MINUTE:02d}"
     has_api_creds = bool(REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET)
     return render_template(
@@ -62,7 +149,8 @@ def settings_page():
         schedule_time=schedule_time,
         reddit_username=REDDIT_USERNAME,
         test_mode=TEST_MODE,
-        has_api_creds=has_api_creds
+        has_api_creds=has_api_creds,
+        user=user
     )
 
 
