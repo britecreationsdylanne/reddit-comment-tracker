@@ -146,8 +146,17 @@ def insert_comment(comment_data):
     return is_new
 
 
-def get_comments(post_id=None, date_from=None, date_to=None, sentiment=None, reply_status=None, page=1, per_page=50):
-    """Get comments with optional filters and pagination."""
+SORT_OPTIONS = {
+    'date_desc': 'c.created_utc DESC',
+    'date_asc': 'c.created_utc ASC',
+    'sentiment': 'c.sentiment ASC, c.created_utc DESC',
+    'post': 'p.title ASC, c.created_utc DESC',
+    'author': 'c.author ASC, c.created_utc DESC',
+}
+
+
+def get_comments(post_id=None, date_from=None, date_to=None, sentiment=None, reply_status=None, sort_by='date_desc', page=1, per_page=50):
+    """Get comments with optional filters, sorting, and pagination."""
     conn = get_db()
     cursor = conn.cursor()
 
@@ -185,7 +194,8 @@ def get_comments(post_id=None, date_from=None, date_to=None, sentiment=None, rep
     total = cursor.fetchone()[0]
 
     # Add ordering and pagination
-    query += " ORDER BY c.created_utc DESC LIMIT ? OFFSET ?"
+    order_clause = SORT_OPTIONS.get(sort_by, SORT_OPTIONS['date_desc'])
+    query += f" ORDER BY {order_clause} LIMIT ? OFFSET ?"
     params.extend([per_page, (page - 1) * per_page])
 
     cursor.execute(query, params)

@@ -27,9 +27,13 @@ from backend.database import (
 from backend.reddit_scraper import run_scrape
 from backend.email_notifier import send_notification, send_test_email
 from backend.ai_helper import suggest_reply, batch_analyze_sentiment
+from backend.gcs_backup import restore_db, backup_db
 
 app = Flask(__name__)
 CORS(app)
+
+# Restore database from GCS (if configured) before init
+restore_db()
 
 # Initialize database
 init_db()
@@ -83,6 +87,7 @@ def api_get_comments():
     date_to = request.args.get('date_to')
     sentiment = request.args.get('sentiment')
     reply_status = request.args.get('reply_status')
+    sort_by = request.args.get('sort_by', 'date_desc')
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
 
@@ -108,6 +113,7 @@ def api_get_comments():
         date_to=date_to_ts,
         sentiment=sentiment,
         reply_status=reply_status,
+        sort_by=sort_by,
         page=page,
         per_page=per_page
     )
@@ -354,6 +360,9 @@ def api_sync_upload():
         new_comments_found=new_comments,
         status='success'
     )
+
+    # Back up to GCS after sync
+    backup_db()
 
     return jsonify({
         'success': True,

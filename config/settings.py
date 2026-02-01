@@ -31,5 +31,8 @@ ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
 # Sync API key — protects the /api/sync/upload endpoint
 SYNC_API_KEY = os.getenv('SYNC_API_KEY', '')
 
+# GCS bucket for persistent SQLite backup (optional — only needed on Cloud Run)
+GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME', '')
+
 # Test mode — uses mock data instead of hitting Reddit
 TEST_MODE = os.getenv('TEST_MODE', 'false').lower() == 'true'
