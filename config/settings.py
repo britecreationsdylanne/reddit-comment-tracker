@@ -28,5 +28,8 @@ FLASK_DEBUG = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
 # Anthropic API (Claude) — for suggested replies and sentiment tagging
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
 
+# Sync API key — protects the /api/sync/upload endpoint
+SYNC_API_KEY = os.getenv('SYNC_API_KEY', '')
+
 # Test mode — uses mock data instead of hitting Reddit
 TEST_MODE = os.getenv('TEST_MODE', 'false').lower() == 'true'

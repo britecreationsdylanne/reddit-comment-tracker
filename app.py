@@ -13,14 +13,16 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from config.settings import (
     FLASK_PORT, FLASK_DEBUG, REDDIT_USERNAME, TEST_MODE,
-    REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, SCRAPE_HOUR, SCRAPE_MINUTE
+    REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, SCRAPE_HOUR, SCRAPE_MINUTE,
+    SYNC_API_KEY
 )
 from backend.database import (
     init_db, get_comments, get_posts_with_counts, get_stats,
     get_scrape_log, get_recipients, add_recipient, update_recipient,
     delete_recipient, get_new_comments_since, get_last_successful_scrape,
     update_comment_sentiment, update_comment_reply_status,
-    get_comments_without_sentiment, get_all_comments_for_export
+    get_comments_without_sentiment, get_all_comments_for_export,
+    insert_post, insert_comment, log_scrape_start, log_scrape_end
 )
 from backend.reddit_scraper import run_scrape
 from backend.email_notifier import send_notification, send_test_email
@@ -311,6 +313,53 @@ def api_export_csv():
         mimetype='text/csv',
         headers={'Content-Disposition': f'attachment; filename=briteco_comments_{timestamp}.csv'}
     )
+
+
+# ========================================
+# API Routes — Sync (local scraper → cloud)
+# ========================================
+
+@app.route('/api/sync/upload', methods=['POST'])
+def api_sync_upload():
+    """Receive scraped data from a local machine.
+
+    Used when Reddit blocks cloud IPs — scrape runs locally,
+    then uploads results here.
+    """
+    # Verify API key
+    auth = request.headers.get('X-Sync-Key', '')
+    if not SYNC_API_KEY or auth != SYNC_API_KEY:
+        return jsonify({'success': False, 'error': 'Invalid or missing sync key'}), 401
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+    posts = data.get('posts', [])
+    comments = data.get('comments', [])
+
+    # Log the sync as a scrape
+    log_id = log_scrape_start()
+
+    new_comments = 0
+    for post in posts:
+        insert_post(post)
+    for comment in comments:
+        if insert_comment(comment):
+            new_comments += 1
+
+    log_scrape_end(
+        log_id,
+        posts_found=len(posts),
+        new_comments_found=new_comments,
+        status='success'
+    )
+
+    return jsonify({
+        'success': True,
+        'posts_synced': len(posts),
+        'new_comments': new_comments
+    })
 
 
 # ========================================

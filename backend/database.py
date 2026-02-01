@@ -267,6 +267,26 @@ def get_all_comments_for_export(post_id=None, date_from=None, date_to=None, sent
     return rows
 
 
+def get_all_posts():
+    """Get all posts as dicts (for sync upload)."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, title, subreddit, url, created_utc FROM posts")
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
+def get_all_comments_raw():
+    """Get all comments as dicts (for sync upload)."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, post_id, author, body, created_utc, parent_id, score FROM comments")
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
 def get_new_comments_since(timestamp):
     """Get comments first seen after the given timestamp."""
     conn = get_db()
