@@ -1,0 +1,30 @@
+name: Daily Reddit Scrape & Sync
+
+on:
+  schedule:
+    # Run at 5:00 AM EST (10:00 UTC) every day
+    - cron: '0 10 * * *'
+  workflow_dispatch:  # Allow manual trigger from GitHub UI
+
+jobs:
+  scrape-and-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests python-dotenv praw apscheduler sendgrid anthropic
+
+      - name: Run scrape and sync
+        env:
+          REDDIT_USERNAME: BriteCo_Insurance
+          CLOUD_URL: ${{ secrets.CLOUD_URL }}
+          SYNC_API_KEY: ${{ secrets.SYNC_API_KEY }}
+        run: python sync_to_cloud.py
