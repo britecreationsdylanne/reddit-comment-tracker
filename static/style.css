@@ -53,6 +53,11 @@ body {
     background: #fff;
     border-radius: 10px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    overflow: visible;
+}
+
+.comments-table table {
+    border-radius: 10px;
     overflow: hidden;
 }
 

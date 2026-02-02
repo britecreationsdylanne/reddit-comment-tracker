@@ -45,7 +45,7 @@ def sync():
         print(f"[Sync] Scraped {posts_found} posts, {new_comments} new comments")
     except Exception as e:
         print(f"[Sync] Scrape failed: {e}")
-        return
+        print("[Sync] Continuing with existing local data...")
 
     # Step 2: Read all data from local DB
     print("[Sync] Reading local database...")
