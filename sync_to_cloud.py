@@ -56,27 +56,35 @@ def sync():
     comments = get_all_comments_raw()
     print(f"[Sync] Found {len(posts)} posts and {len(comments)} comments to sync")
 
-    # Step 3: Upload to cloud
+    # Step 3: Upload to cloud (with retries for transient SSL/connection errors)
     print(f"[Sync] Uploading to {CLOUD_URL}...")
-    try:
-        response = requests.post(
-            f"{CLOUD_URL}/api/sync/upload",
-            json={'posts': posts, 'comments': comments},
-            headers={
-                'X-Sync-Key': SYNC_API_KEY,
-                'Content-Type': 'application/json'
-            },
-            timeout=120
-        )
+    payload = {'posts': posts, 'comments': comments}
+    upload_headers = {'X-Sync-Key': SYNC_API_KEY, 'Content-Type': 'application/json'}
 
-        if response.status_code == 200:
-            result = response.json()
-            print(f"[Sync] Success! Synced {result.get('posts_synced', 0)} posts, "
-                  f"{result.get('new_comments', 0)} new comments to cloud")
-        else:
-            print(f"[Sync] Upload failed: {response.status_code} — {response.text}")
-    except Exception as e:
-        print(f"[Sync] Upload failed: {e}")
+    for attempt in range(3):
+        try:
+            response = requests.post(
+                f"{CLOUD_URL}/api/sync/upload",
+                json=payload,
+                headers=upload_headers,
+                timeout=120
+            )
+
+            if response.status_code == 200:
+                result = response.json()
+                print(f"[Sync] Success! Synced {result.get('posts_synced', 0)} posts, "
+                      f"{result.get('new_comments', 0)} new comments to cloud")
+                return
+            else:
+                print(f"[Sync] Upload failed: {response.status_code} — {response.text}")
+                return
+        except Exception as e:
+            print(f"[Sync] Upload attempt {attempt + 1}/3 failed: {e}")
+            if attempt < 2:
+                import time
+                time.sleep(10)
+
+    print("[Sync] All upload attempts failed")
 
 
 if __name__ == '__main__':
