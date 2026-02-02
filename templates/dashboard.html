@@ -36,28 +36,22 @@
 
 <!-- Stats Row -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card stat-card p-3">
             <div class="stat-label">Total Posts</div>
             <div class="stat-number" id="statPosts">-</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card stat-card p-3">
             <div class="stat-label">Total Comments</div>
             <div class="stat-number" id="statComments">-</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card stat-card highlight p-3">
             <div class="stat-label">New Today</div>
             <div class="stat-number" id="statNewToday">-</div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card stat-card p-3">
-            <div class="stat-label">Last Sync</div>
-            <div id="statLastScrape" style="font-size: 0.95rem; color: #555; margin-top: 8px;">-</div>
         </div>
     </div>
 </div>
@@ -221,15 +215,6 @@
             document.getElementById('statPosts').textContent = data.total_posts;
             document.getElementById('statComments').textContent = data.total_comments;
             document.getElementById('statNewToday').textContent = data.new_today;
-
-            if (data.last_scrape) {
-                const d = new Date(data.last_scrape.completed_at + 'Z');
-                const statusClass = data.last_scrape.status === 'success' ? 'success' : 'error';
-                document.getElementById('statLastScrape').innerHTML =
-                    `<span class="status-dot ${statusClass}"></span>${timeAgo(d)}`;
-            } else {
-                document.getElementById('statLastScrape').textContent = 'Never';
-            }
         } catch (e) {
             console.error('Failed to load stats:', e);
         }
