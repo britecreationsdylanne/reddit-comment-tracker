@@ -121,6 +121,22 @@ def get_posts_with_counts():
     return rows
 
 
+def get_authors_with_counts():
+    """Return all comment authors with their comment counts, most comments first."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT author, COUNT(*) as comment_count
+        FROM comments
+        WHERE author IS NOT NULL AND author != '[deleted]'
+        GROUP BY author
+        ORDER BY comment_count DESC
+    """)
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
 # --- Comments ---
 
 def insert_comment(comment_data):
@@ -155,7 +171,7 @@ SORT_OPTIONS = {
 }
 
 
-def get_comments(post_id=None, date_from=None, date_to=None, sentiment=None, reply_status=None, sort_by='date_desc', page=1, per_page=50):
+def get_comments(post_id=None, date_from=None, date_to=None, sentiment=None, reply_status=None, author=None, sort_by='date_desc', page=1, per_page=50):
     """Get comments with optional filters, sorting, and pagination."""
     conn = get_db()
     cursor = conn.cursor()
@@ -187,6 +203,10 @@ def get_comments(post_id=None, date_from=None, date_to=None, sentiment=None, rep
     if reply_status:
         query += " AND c.reply_status = ?"
         params.append(reply_status)
+
+    if author:
+        query += " AND c.author = ?"
+        params.append(author)
 
     # Get total count
     count_query = query.replace("SELECT c.*, p.title as post_title, p.url as post_url, p.subreddit", "SELECT COUNT(*)")

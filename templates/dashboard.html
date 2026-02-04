@@ -75,6 +75,7 @@
 <!-- Hidden filter state elements -->
 <select class="d-none" id="filterPost"><option value="">All Posts</option></select>
 <input type="hidden" id="filterSentiment" value="">
+<input type="hidden" id="filterAuthor" value="">
 <input type="hidden" id="filterReplyStatus" value="needs_reply">
 <input type="hidden" id="filterDateFrom" value="">
 <input type="hidden" id="filterDateTo" value="">
@@ -129,11 +130,17 @@
                 <th>Comment</th>
                 <th class="col-header" data-col="author">
                     <div class="dropdown d-inline">
-                        <span class="col-header-btn" data-bs-toggle="dropdown" role="button">
+                        <span class="col-header-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button">
                             Author <i class="bi bi-chevron-down ms-1" style="font-size: 0.65rem;"></i>
                         </span>
-                        <div class="dropdown-menu col-dropdown p-2">
+                        <div class="dropdown-menu col-dropdown p-2" style="min-width: 240px;">
+                            <div class="mb-2"><small class="text-muted fw-bold">SORT</small></div>
                             <a class="dropdown-item rounded" href="#" onclick="setSort('author'); return false;"><i class="bi bi-sort-alpha-down me-2"></i>Sort A-Z</a>
+                            <hr class="my-2">
+                            <div class="mb-2"><small class="text-muted fw-bold">FILTER BY AUTHOR</small></div>
+                            <select class="form-select form-select-sm" id="headerFilterAuthor" onchange="setFilter('author', this.value)">
+                                <option value="">All Authors</option>
+                            </select>
                         </div>
                     </div>
                 </th>
@@ -284,6 +291,27 @@
         }
     }
 
+    // --- Load authors for filter dropdown ---
+    async function loadAuthors() {
+        try {
+            const res = await fetch('/api/authors');
+            const authors = await res.json();
+            const select = document.getElementById('headerFilterAuthor');
+            if (!select) return;
+            const current = select.value;
+            select.innerHTML = '<option value="">All Authors</option>';
+            authors.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.author;
+                opt.textContent = `u/${a.author} (${a.comment_count})`;
+                select.appendChild(opt);
+            });
+            select.value = current;
+        } catch (e) {
+            console.error('Failed to load authors:', e);
+        }
+    }
+
     // --- Column header filter/sort actions ---
     function setSort(sortBy) {
         document.getElementById('filterSortBy').value = sortBy;
@@ -297,6 +325,9 @@
             document.getElementById('headerFilterPost').value = value;
         } else if (type === 'sentiment') {
             document.getElementById('filterSentiment').value = value;
+        } else if (type === 'author') {
+            document.getElementById('filterAuthor').value = value;
+            document.getElementById('headerFilterAuthor').value = value;
         } else if (type === 'status') {
             document.getElementById('filterReplyStatus').value = value;
         } else if (type === 'dateFrom') {
@@ -319,6 +350,8 @@
         }
         const sent = document.getElementById('filterSentiment').value;
         if (sent) chips.push({label: `Sentiment: ${sent}`, clear: () => setFilter('sentiment', '')});
+        const auth = document.getElementById('filterAuthor').value;
+        if (auth) chips.push({label: `Author: u/${auth}`, clear: () => setFilter('author', '')});
         const df = document.getElementById('filterDateFrom').value;
         if (df) chips.push({label: `From: ${df}`, clear: () => { document.getElementById('headerDateFrom').value = ''; setFilter('dateFrom', ''); }});
         const dt = document.getElementById('filterDateTo').value;
@@ -350,6 +383,7 @@
         const dateFrom = document.getElementById('filterDateFrom').value;
         const dateTo = document.getElementById('filterDateTo').value;
         const sentiment = document.getElementById('filterSentiment').value;
+        const author = document.getElementById('filterAuthor').value;
         const replyStatus = document.getElementById('filterReplyStatus').value;
         const sortBy = document.getElementById('filterSortBy').value;
 
@@ -358,6 +392,7 @@
         if (dateFrom) params += `&date_from=${dateFrom}`;
         if (dateTo) params += `&date_to=${dateTo}`;
         if (sentiment) params += `&sentiment=${sentiment}`;
+        if (author) params += `&author=${encodeURIComponent(author)}`;
         if (replyStatus) params += `&reply_status=${replyStatus}`;
         if (sortBy) params += `&sort_by=${sortBy}`;
         return params;
@@ -478,7 +513,10 @@
         document.getElementById('filterDateFrom').value = '';
         document.getElementById('filterDateTo').value = '';
         document.getElementById('filterSentiment').value = '';
+        document.getElementById('filterAuthor').value = '';
         document.getElementById('filterReplyStatus').value = 'needs_reply';
+        const ha = document.getElementById('headerFilterAuthor');
+        if (ha) ha.value = '';
         document.getElementById('filterSortBy').value = 'date_desc';
         const hp = document.getElementById('headerFilterPost');
         if (hp) hp.value = '';
@@ -757,6 +795,7 @@
     // --- Init ---
     loadStats();
     loadPosts();
+    loadAuthors();
     loadComments(1);  // Defaults to needs_reply tab
 </script>
 {% endblock %}

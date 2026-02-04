@@ -21,7 +21,7 @@ from config.settings import (
     SYNC_API_KEY
 )
 from backend.database import (
-    init_db, get_comments, get_posts_with_counts, get_stats,
+    init_db, get_comments, get_posts_with_counts, get_authors_with_counts, get_stats,
     get_scrape_log, get_recipients, add_recipient, update_recipient,
     delete_recipient, get_new_comments_since, get_last_successful_scrape,
     update_comment_sentiment, update_comment_reply_status,
@@ -168,6 +168,11 @@ def api_get_posts():
     return jsonify(get_posts_with_counts())
 
 
+@app.route('/api/authors')
+def api_get_authors():
+    return jsonify(get_authors_with_counts())
+
+
 @app.route('/api/comments')
 def api_get_comments():
     post_id = request.args.get('post_id')
@@ -175,6 +180,7 @@ def api_get_comments():
     date_to = request.args.get('date_to')
     sentiment = request.args.get('sentiment')
     reply_status = request.args.get('reply_status')
+    author = request.args.get('author')
     sort_by = request.args.get('sort_by', 'date_desc')
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 25, type=int)
@@ -201,6 +207,7 @@ def api_get_comments():
         date_to=date_to_ts,
         sentiment=sentiment,
         reply_status=reply_status,
+        author=author,
         sort_by=sort_by,
         page=page,
         per_page=per_page
