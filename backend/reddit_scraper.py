@@ -297,7 +297,7 @@ def _scrape_with_praw():
             'created_utc': submission.created_utc
         })
 
-        submission.comments.replace_more(limit=0)
+        submission.comments.replace_more(limit=10)
         for comment in submission.comments.list():
             author = str(comment.author) if comment.author else '[deleted]'
 
