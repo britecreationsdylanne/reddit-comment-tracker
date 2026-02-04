@@ -217,6 +217,62 @@ body {
     margin-bottom: 15px;
 }
 
+/* Status tabs */
+.status-tabs {
+    border-bottom: 2px solid #dee2e6;
+}
+
+.status-tabs .nav-link {
+    color: #666;
+    font-weight: 500;
+    font-size: 0.9rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    padding: 10px 20px;
+}
+
+.status-tabs .nav-link:hover {
+    color: var(--bc-teal);
+    border-bottom-color: #ccc;
+}
+
+.status-tabs .nav-link.active {
+    color: var(--bc-teal);
+    border-bottom-color: var(--bc-teal);
+    background: transparent;
+}
+
+/* Bulk action bar */
+.bulk-action-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-top: 1px solid #dee2e6;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+    padding: 12px 30px;
+    z-index: 1050;
+    display: flex;
+    justify-content: center;
+}
+
+/* Author link */
+.author-link {
+    cursor: pointer;
+}
+
+.author-link:hover {
+    text-decoration: underline;
+    color: var(--bc-teal);
+}
+
+/* Row checkbox */
+.row-check {
+    cursor: pointer;
+}
+
 /* Loading spinner */
 .loading-overlay {
     position: fixed;

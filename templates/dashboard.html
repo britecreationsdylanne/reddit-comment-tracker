@@ -75,16 +75,41 @@
 <!-- Hidden filter state elements -->
 <select class="d-none" id="filterPost"><option value="">All Posts</option></select>
 <input type="hidden" id="filterSentiment" value="">
-<input type="hidden" id="filterReplyStatus" value="">
+<input type="hidden" id="filterReplyStatus" value="needs_reply">
 <input type="hidden" id="filterDateFrom" value="">
 <input type="hidden" id="filterDateTo" value="">
 <input type="hidden" id="filterSortBy" value="date_desc">
 
+<!-- Status Tabs -->
+<ul class="nav nav-tabs status-tabs mt-3" id="statusTabs">
+    <li class="nav-item">
+        <a class="nav-link active" href="#" onclick="setStatusTab('needs_reply'); return false;" data-tab="needs_reply">
+            Needs Reply <span class="badge bg-info ms-1" id="tabCountNeedsReply">0</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#" onclick="setStatusTab('replied'); return false;" data-tab="replied">
+            Replied <span class="badge bg-success ms-1" id="tabCountReplied">0</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#" onclick="setStatusTab('ignored'); return false;" data-tab="ignored">
+            Ignored <span class="badge bg-secondary ms-1" id="tabCountIgnored">0</span>
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#" onclick="setStatusTab(''); return false;" data-tab="">
+            All <span class="badge bg-dark ms-1" id="tabCountAll">0</span>
+        </a>
+    </li>
+</ul>
+
 <!-- Comments Table -->
-<div class="comments-table mt-3">
+<div class="comments-table">
     <table class="table table-hover mb-0">
         <thead>
             <tr>
+                <th style="width: 40px;"><input type="checkbox" class="form-check-input" id="selectAll" onchange="toggleSelectAll(this.checked)"></th>
                 <th class="col-header" data-col="post">
                     <div class="dropdown d-inline">
                         <span class="col-header-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button">
@@ -130,19 +155,6 @@
                         </div>
                     </div>
                 </th>
-                <th class="col-header" data-col="status">
-                    <div class="dropdown d-inline">
-                        <span class="col-header-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button">
-                            Status <i class="bi bi-chevron-down ms-1" style="font-size: 0.65rem;"></i>
-                        </span>
-                        <div class="dropdown-menu col-dropdown p-2">
-                            <a class="dropdown-item rounded" href="#" onclick="setFilter('status', ''); return false;"><i class="bi bi-circle me-2"></i>All</a>
-                            <a class="dropdown-item rounded" href="#" onclick="setFilter('status', 'needs_reply'); return false;"><i class="bi bi-chat-dots text-info me-2"></i>Needs Reply</a>
-                            <a class="dropdown-item rounded" href="#" onclick="setFilter('status', 'replied'); return false;"><i class="bi bi-check-circle text-success me-2"></i>Replied</a>
-                            <a class="dropdown-item rounded" href="#" onclick="setFilter('status', 'ignored'); return false;"><i class="bi bi-x-circle text-secondary me-2"></i>Ignored</a>
-                        </div>
-                    </div>
-                </th>
                 <th class="col-header" data-col="date">
                     <div class="dropdown d-inline">
                         <span class="col-header-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button">
@@ -180,12 +192,31 @@
     <div class="text-muted" style="font-size: 0.85rem;" id="paginationInfo">-</div>
     <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
 </nav>
+
+<!-- Bulk Action Bar -->
+<div class="bulk-action-bar" id="bulkActionBar" style="display: none;">
+    <div class="d-flex align-items-center gap-3">
+        <span class="fw-500" id="bulkCount">0 selected</span>
+        <button class="btn btn-sm btn-success" onclick="bulkSetStatus('replied')">
+            <i class="bi bi-check-circle me-1"></i>Mark Replied
+        </button>
+        <button class="btn btn-sm btn-secondary" onclick="bulkSetStatus('ignored')">
+            <i class="bi bi-x-circle me-1"></i>Mark Ignored
+        </button>
+        <button class="btn btn-sm btn-info" onclick="bulkSetStatus('needs_reply')">
+            <i class="bi bi-chat-dots me-1"></i>Mark Needs Reply
+        </button>
+        <a href="#" class="text-muted ms-2" style="font-size: 0.85rem;" onclick="clearSelection(); return false;">Clear</a>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     let currentPage = 1;
     const perPage = 25;
+    const selectedIds = new Set();
+    let currentComments = [];
 
     const sentimentColors = {
         positive: 'success',
@@ -218,6 +249,11 @@
             document.getElementById('statPosts').textContent = data.total_posts;
             document.getElementById('statComments').textContent = data.total_comments;
             document.getElementById('statNewToday').textContent = data.new_today;
+            // Update tab counts
+            document.getElementById('tabCountNeedsReply').textContent = data.needs_reply_count || 0;
+            document.getElementById('tabCountReplied').textContent = data.replied_count || 0;
+            document.getElementById('tabCountIgnored').textContent = data.ignored_count || 0;
+            document.getElementById('tabCountAll').textContent = data.total_comments || 0;
         } catch (e) {
             console.error('Failed to load stats:', e);
         }
@@ -283,8 +319,6 @@
         }
         const sent = document.getElementById('filterSentiment').value;
         if (sent) chips.push({label: `Sentiment: ${sent}`, clear: () => setFilter('sentiment', '')});
-        const status = document.getElementById('filterReplyStatus').value;
-        if (status) chips.push({label: `Status: ${status.replace('_', ' ')}`, clear: () => setFilter('status', '')});
         const df = document.getElementById('filterDateFrom').value;
         if (df) chips.push({label: `From: ${df}`, clear: () => { document.getElementById('headerDateFrom').value = ''; setFilter('dateFrom', ''); }});
         const dt = document.getElementById('filterDateTo').value;
@@ -346,6 +380,7 @@
 
     function renderComments(comments) {
         const tbody = document.getElementById('commentsBody');
+        currentComments = comments;
 
         if (!comments.length) {
             tbody.innerHTML = `
@@ -369,35 +404,25 @@
             const sentColor = sentimentColors[sent] || 'secondary';
             const sentIcon = sentimentIcons[sent] || 'bi-dash-circle';
 
-            const status = c.reply_status || 'needs_reply';
-            const statColor = statusColors[status] || 'secondary';
-            const statLabel = statusLabels[status] || status;
-
-            // Build status dropdown options
-            const statusOpts = ['needs_reply', 'replied', 'ignored'].map(s =>
-                `<li><a class="dropdown-item ${s === status ? 'active' : ''}" href="#" onclick="setReplyStatus('${c.id}', '${s}'); return false;">${statusLabels[s]}</a></li>`
-            ).join('');
+            const checked = selectedIds.has(c.id) ? 'checked' : '';
 
             return `
-                <tr>
+                <tr class="${checked ? 'table-active' : ''}">
+                    <td><input type="checkbox" class="form-check-input row-check" data-id="${c.id}" ${checked} onchange="toggleSelect('${c.id}', this.checked)"></td>
                     <td>
                         <div style="font-weight: 500; font-size: 0.85rem;">${escapeHtml(postTitle)}</div>
                         <span class="badge-subreddit">r/${escapeHtml(c.subreddit)}</span>
                     </td>
                     <td class="comment-body" title="${escapeHtml(c.body)}" style="max-width: 300px;">${escapeHtml(body)}</td>
-                    <td><strong style="font-size: 0.85rem;">u/${escapeHtml(c.author || '[deleted]')}</strong></td>
+                    <td>
+                        <span class="author-link" onclick="toggleSelectByAuthor('${escapeAttr(c.author || '')}')">
+                            <strong style="font-size: 0.85rem;">u/${escapeHtml(c.author || '[deleted]')}</strong>
+                        </span>
+                    </td>
                     <td>
                         <span class="badge bg-${sentColor}" style="font-size: 0.75rem;">
                             <i class="bi ${sentIcon} me-1"></i>${sent}
                         </span>
-                    </td>
-                    <td>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-${statColor} dropdown-toggle" data-bs-toggle="dropdown" style="font-size: 0.75rem;">
-                                ${statLabel}
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-sm">${statusOpts}</ul>
-                        </div>
                     </td>
                     <td style="white-space: nowrap; font-size: 0.8rem; color: #666;">${dateStr}</td>
                     <td>
@@ -412,6 +437,10 @@
                     </td>
                 </tr>`;
         }).join('');
+
+        // Update select-all checkbox state
+        const allChecked = comments.length > 0 && comments.every(c => selectedIds.has(c.id));
+        document.getElementById('selectAll').checked = allChecked;
     }
 
     function renderPagination(page, totalPages, total) {
@@ -449,7 +478,7 @@
         document.getElementById('filterDateFrom').value = '';
         document.getElementById('filterDateTo').value = '';
         document.getElementById('filterSentiment').value = '';
-        document.getElementById('filterReplyStatus').value = '';
+        document.getElementById('filterReplyStatus').value = 'needs_reply';
         document.getElementById('filterSortBy').value = 'date_desc';
         const hp = document.getElementById('headerFilterPost');
         if (hp) hp.value = '';
@@ -457,6 +486,11 @@
         if (hdf) hdf.value = '';
         const hdt = document.getElementById('headerDateTo');
         if (hdt) hdt.value = '';
+        // Reset tab to Needs Reply
+        document.querySelectorAll('#statusTabs .nav-link').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.tab === 'needs_reply');
+        });
+        clearSelection();
         loadComments(1);
         updateActiveFilters();
     }
@@ -469,8 +503,118 @@
                 body: JSON.stringify({ reply_status: status })
             });
             loadComments(currentPage);
+            loadStats();
         } catch (e) {
             alert('Failed to update status: ' + e.message);
+        }
+    }
+
+    // --- Status Tabs ---
+    function setStatusTab(status) {
+        document.getElementById('filterReplyStatus').value = status;
+        // Update tab active state
+        document.querySelectorAll('#statusTabs .nav-link').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.tab === status);
+        });
+        clearSelection();
+        loadComments(1);
+        updateActiveFilters();
+    }
+
+    // --- Selection ---
+    function toggleSelect(id, checked) {
+        if (checked) {
+            selectedIds.add(id);
+        } else {
+            selectedIds.delete(id);
+        }
+        updateBulkBar();
+        // Highlight row
+        const checkbox = document.querySelector(`input[data-id="${id}"]`);
+        if (checkbox) checkbox.closest('tr').classList.toggle('table-active', checked);
+        // Update select-all
+        const allChecked = currentComments.length > 0 && currentComments.every(c => selectedIds.has(c.id));
+        document.getElementById('selectAll').checked = allChecked;
+    }
+
+    function toggleSelectAll(checked) {
+        currentComments.forEach(c => {
+            if (checked) {
+                selectedIds.add(c.id);
+            } else {
+                selectedIds.delete(c.id);
+            }
+        });
+        // Update all checkboxes
+        document.querySelectorAll('.row-check').forEach(cb => {
+            cb.checked = checked;
+            cb.closest('tr').classList.toggle('table-active', checked);
+        });
+        updateBulkBar();
+    }
+
+    function toggleSelectByAuthor(author) {
+        const authorComments = currentComments.filter(c => (c.author || '') === author);
+        const allSelected = authorComments.every(c => selectedIds.has(c.id));
+
+        authorComments.forEach(c => {
+            if (allSelected) {
+                selectedIds.delete(c.id);
+            } else {
+                selectedIds.add(c.id);
+            }
+        });
+
+        // Re-render checkboxes
+        document.querySelectorAll('.row-check').forEach(cb => {
+            const id = cb.dataset.id;
+            cb.checked = selectedIds.has(id);
+            cb.closest('tr').classList.toggle('table-active', selectedIds.has(id));
+        });
+        const allPageChecked = currentComments.length > 0 && currentComments.every(c => selectedIds.has(c.id));
+        document.getElementById('selectAll').checked = allPageChecked;
+        updateBulkBar();
+    }
+
+    function clearSelection() {
+        selectedIds.clear();
+        document.querySelectorAll('.row-check').forEach(cb => {
+            cb.checked = false;
+            cb.closest('tr').classList.remove('table-active');
+        });
+        document.getElementById('selectAll').checked = false;
+        updateBulkBar();
+    }
+
+    function updateBulkBar() {
+        const bar = document.getElementById('bulkActionBar');
+        const count = selectedIds.size;
+        if (count > 0) {
+            bar.style.display = 'block';
+            document.getElementById('bulkCount').textContent = `${count} selected`;
+        } else {
+            bar.style.display = 'none';
+        }
+    }
+
+    async function bulkSetStatus(status) {
+        if (selectedIds.size === 0) return;
+        try {
+            const res = await fetch('/api/comments/bulk-status', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comment_ids: Array.from(selectedIds), reply_status: status })
+            });
+            const data = await res.json();
+            if (data.success) {
+                clearSelection();
+                loadComments(currentPage);
+                loadStats();
+            } else {
+                alert('Bulk update failed: ' + (data.error || 'Unknown error'));
+            }
+        } catch (e) {
+            alert('Bulk update failed: ' + e.message);
         }
     }
 
@@ -613,6 +757,6 @@
     // --- Init ---
     loadStats();
     loadPosts();
-    loadComments(1);
+    loadComments(1);  // Defaults to needs_reply tab
 </script>
 {% endblock %}

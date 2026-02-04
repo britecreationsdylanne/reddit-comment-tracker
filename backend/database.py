@@ -329,6 +329,10 @@ def get_stats():
     cursor.execute("SELECT COUNT(*) FROM comments WHERE first_seen_at >= ?", (today_start,))
     new_today = cursor.fetchone()[0]
 
+    # Comment counts by reply status
+    cursor.execute("SELECT reply_status, COUNT(*) FROM comments GROUP BY reply_status")
+    status_counts = {row[0]: row[1] for row in cursor.fetchall()}
+
     # Last successful scrape
     cursor.execute("SELECT * FROM scrape_log WHERE status = 'success' ORDER BY completed_at DESC LIMIT 1")
     last_scrape = cursor.fetchone()
@@ -339,7 +343,10 @@ def get_stats():
         'total_posts': total_posts,
         'total_comments': total_comments,
         'new_today': new_today,
-        'last_scrape': last_scrape_dict
+        'last_scrape': last_scrape_dict,
+        'needs_reply_count': status_counts.get('needs_reply', 0),
+        'replied_count': status_counts.get('replied', 0),
+        'ignored_count': status_counts.get('ignored', 0)
     }
 
 
