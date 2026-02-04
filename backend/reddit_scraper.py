@@ -256,7 +256,12 @@ def _process_comments(comment_listing, post_id):
 # --- PRAW Scraper (used when API credentials are available) ---
 
 def _scrape_with_praw():
-    """Scrape using PRAW (official Reddit API). Requires credentials."""
+    """Scrape using PRAW (official Reddit API). Requires credentials.
+
+    BriteCo's posts are promoted/profile posts that don't appear in
+    user.submissions. Instead, we discover posts by looking at which posts
+    BriteCo has commented on, then fetch comments for each.
+    """
     import praw
 
     reddit = praw.Reddit(
@@ -269,7 +274,23 @@ def _scrape_with_praw():
     new_comments = 0
 
     user = reddit.redditor(REDDIT_USERNAME)
-    for submission in user.submissions.new(limit=100):
+
+    # First try normal submissions
+    submissions = list(user.submissions.new(limit=100))
+
+    if not submissions:
+        # Discover posts from BriteCo's comments (promoted/profile posts)
+        print("[Scraper] No submissions found, discovering posts from comments...")
+        seen_posts = {}
+        for comment in user.comments.new(limit=500):
+            post_id = comment.link_id  # e.g. t3_abc123
+            if post_id not in seen_posts:
+                seen_posts[post_id] = comment.submission
+
+        submissions = list(seen_posts.values())
+        print(f"[Scraper] Discovered {len(submissions)} posts from comments")
+
+    for submission in submissions:
         posts_found += 1
 
         insert_post({
