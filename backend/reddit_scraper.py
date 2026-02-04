@@ -227,10 +227,6 @@ def _process_comments(comment_listing, post_id):
         comment = item['data']
         author = comment.get('author', '[deleted]')
 
-        # Skip BriteCo's own comments
-        if author and author.lower() == REDDIT_USERNAME.lower():
-            continue
-
         is_new = insert_comment({
             'id': comment['name'],
             'post_id': post_id,
@@ -304,9 +300,6 @@ def _scrape_with_praw():
         submission.comments.replace_more(limit=0)
         for comment in submission.comments.list():
             author = str(comment.author) if comment.author else '[deleted]'
-
-            if author.lower() == REDDIT_USERNAME.lower():
-                continue
 
             is_new = insert_comment({
                 'id': comment.fullname,
