@@ -60,6 +60,9 @@
 <div class="filter-bar d-flex align-items-center gap-2">
     <div id="activeFilters" class="d-flex flex-wrap gap-1"></div>
     <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-sm btn-outline-secondary" onclick="runScrape()" id="btnScrape" title="Scrape Reddit for new comments">
+            <i class="bi bi-arrow-clockwise me-1"></i>Sync Data
+        </button>
         <button class="btn btn-sm btn-outline-secondary" onclick="runSentimentAnalysis()" id="btnSentiment" title="Analyze sentiment with AI">
             <i class="bi bi-emoji-smile me-1"></i>Analyze Sentiment
         </button>
@@ -564,7 +567,7 @@
     async function runScrape() {
         const btn = document.getElementById('btnScrape');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scraping...';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Syncing...';
 
         try {
             const res = await fetch('/api/scrape/run', { method: 'POST' });
@@ -584,7 +587,7 @@
             alert('Scrape request failed: ' + e.message);
         } finally {
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Run Scrape Now';
+            btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Sync Data';
         }
     }
 
