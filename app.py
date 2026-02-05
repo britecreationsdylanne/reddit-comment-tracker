@@ -374,6 +374,7 @@ def api_update_reply_status(comment_id):
     if status not in ('needs_reply', 'replied', 'ignored'):
         return jsonify({'success': False, 'error': 'Invalid status'}), 400
     update_comment_reply_status(comment_id, status)
+    backup_db()
     return jsonify({'success': True})
 
 
@@ -388,6 +389,7 @@ def api_bulk_update_reply_status():
         return jsonify({'success': False, 'error': 'No comments selected'}), 400
     for cid in comment_ids:
         update_comment_reply_status(cid, status)
+    backup_db()
     return jsonify({'success': True, 'updated': len(comment_ids)})
 
 
@@ -398,6 +400,7 @@ def api_update_sentiment(comment_id):
     if sentiment not in ('positive', 'negative', 'question', 'neutral'):
         return jsonify({'success': False, 'error': 'Invalid sentiment'}), 400
     update_comment_sentiment(comment_id, sentiment)
+    backup_db()
     return jsonify({'success': True})
 
 
