@@ -243,6 +243,23 @@ body {
     background: transparent;
 }
 
+/* Select-all banner */
+.select-all-banner {
+    background: #e8f5f5;
+    border: 1px solid #b2dfdb;
+    border-radius: 0;
+    padding: 8px 20px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: #333;
+}
+
+.select-all-banner a {
+    color: var(--bc-teal);
+    font-weight: 600;
+    margin-left: 4px;
+}
+
 /* Bulk action bar */
 .bulk-action-bar {
     position: fixed;

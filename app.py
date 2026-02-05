@@ -173,6 +173,39 @@ def api_get_authors():
     return jsonify(get_authors_with_counts())
 
 
+@app.route('/api/comments/ids')
+def api_get_comment_ids():
+    """Get all comment IDs matching the current filter (for select-all-in-filter)."""
+    post_id = request.args.get('post_id')
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    sentiment = request.args.get('sentiment')
+    reply_status = request.args.get('reply_status')
+    author = request.args.get('author')
+
+    date_from_ts = None
+    date_to_ts = None
+    if date_from:
+        try:
+            date_from_ts = datetime.strptime(date_from, '%Y-%m-%d').replace(tzinfo=timezone.utc).timestamp()
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            date_to_ts = datetime.strptime(date_to, '%Y-%m-%d').replace(
+                hour=23, minute=59, second=59, tzinfo=timezone.utc
+            ).timestamp()
+        except ValueError:
+            pass
+
+    result = get_comments(
+        post_id=post_id, date_from=date_from_ts, date_to=date_to_ts,
+        sentiment=sentiment, reply_status=reply_status, author=author,
+        page=1, per_page=10000
+    )
+    return jsonify({'ids': [c['id'] for c in result['comments']], 'total': result['total']})
+
+
 @app.route('/api/comments')
 def api_get_comments():
     post_id = request.args.get('post_id')
@@ -462,6 +495,9 @@ def api_sync_upload():
     for comment in comments:
         if insert_comment(comment):
             new_comments += 1
+        # Sync reply_status if present
+        if comment.get('reply_status') and comment['reply_status'] != 'needs_reply':
+            update_comment_reply_status(comment['id'], comment['reply_status'])
 
     log_scrape_end(
         log_id,

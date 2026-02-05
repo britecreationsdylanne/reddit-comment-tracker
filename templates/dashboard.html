@@ -105,6 +105,13 @@
     </li>
 </ul>
 
+<!-- Select All Banner -->
+<div class="select-all-banner" id="selectAllBanner" style="display: none;">
+    <span id="selectAllBannerText">All 25 on this page are selected.</span>
+    <a href="#" id="selectAllFilterLink" onclick="selectAllInFilter(); return false;">Select all <span id="selectAllFilterCount">0</span> matching this filter</a>
+    <span id="selectAllFilterDone" style="display: none;">All <span id="selectAllFilterDoneCount">0</span> selected.</span>
+</div>
+
 <!-- Comments Table -->
 <div class="comments-table">
     <table class="table table-hover mb-0">
@@ -589,6 +596,41 @@
             cb.closest('tr').classList.toggle('table-active', checked);
         });
         updateBulkBar();
+
+        // Show/hide select-all-in-filter banner
+        const banner = document.getElementById('selectAllBanner');
+        if (checked && currentComments.length >= perPage) {
+            banner.style.display = 'block';
+            document.getElementById('selectAllFilterLink').style.display = '';
+            document.getElementById('selectAllFilterDone').style.display = 'none';
+            document.getElementById('selectAllBannerText').textContent = `All ${currentComments.length} on this page are selected.`;
+            // Fetch total count for filter
+            fetch(`/api/comments/ids?${getFilterParams().substring(1)}`)
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('selectAllFilterCount').textContent = data.total;
+                    if (data.total <= currentComments.length) {
+                        banner.style.display = 'none';
+                    }
+                });
+        } else {
+            banner.style.display = 'none';
+        }
+    }
+
+    async function selectAllInFilter() {
+        try {
+            const res = await fetch(`/api/comments/ids?${getFilterParams().substring(1)}`);
+            const data = await res.json();
+            data.ids.forEach(id => selectedIds.add(id));
+            updateBulkBar();
+            // Update banner
+            document.getElementById('selectAllFilterLink').style.display = 'none';
+            document.getElementById('selectAllFilterDone').style.display = '';
+            document.getElementById('selectAllFilterDoneCount').textContent = data.total;
+        } catch (e) {
+            alert('Failed to select all: ' + e.message);
+        }
     }
 
     function toggleSelectByAuthor(author) {
@@ -621,6 +663,7 @@
             cb.closest('tr').classList.remove('table-active');
         });
         document.getElementById('selectAll').checked = false;
+        document.getElementById('selectAllBanner').style.display = 'none';
         updateBulkBar();
     }
 

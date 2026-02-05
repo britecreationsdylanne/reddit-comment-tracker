@@ -311,7 +311,7 @@ def get_all_comments_raw():
     """Get all comments as dicts (for sync upload)."""
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, post_id, author, body, created_utc, parent_id, score FROM comments")
+    cursor.execute("SELECT id, post_id, author, body, created_utc, parent_id, score, reply_status, sentiment FROM comments")
     rows = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return rows

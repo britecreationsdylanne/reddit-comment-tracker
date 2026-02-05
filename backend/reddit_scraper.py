@@ -7,7 +7,7 @@ from config.settings import (
     REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET,
     REDDIT_USER_AGENT, REDDIT_USERNAME, TEST_MODE
 )
-from backend.database import insert_post, insert_comment, log_scrape_start, log_scrape_end
+from backend.database import insert_post, insert_comment, update_comment_reply_status, log_scrape_start, log_scrape_end
 
 
 # --- Public JSON Scraper (no API key needed) ---
@@ -239,6 +239,8 @@ def _process_comments(comment_listing, post_id):
 
         if is_new:
             new_count += 1
+            if author and author.lower() == REDDIT_USERNAME.lower():
+                update_comment_reply_status(comment['name'], 'ignored')
 
         # Process replies
         replies = comment.get('replies')
@@ -313,6 +315,9 @@ def _scrape_with_praw():
 
             if is_new:
                 new_comments += 1
+                # Auto-ignore BriteCo's own comments
+                if author.lower() == REDDIT_USERNAME.lower():
+                    update_comment_reply_status(comment.fullname, 'ignored')
 
     return posts_found, new_comments
 
