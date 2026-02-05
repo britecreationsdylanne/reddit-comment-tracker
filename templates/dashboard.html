@@ -169,6 +169,7 @@
                         </div>
                     </div>
                 </th>
+                <th>Status</th>
                 <th class="col-header" data-col="date">
                     <div class="dropdown d-inline">
                         <span class="col-header-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" role="button">
@@ -427,7 +428,7 @@
         if (!comments.length) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="empty-state">
+                    <td colspan="8" class="empty-state">
                         <i class="bi bi-chat-dots"></i>
                         <p>No comments found matching your filters.</p>
                     </td>
@@ -465,6 +466,13 @@
                         <span class="badge bg-${sentColor}" style="font-size: 0.75rem;">
                             <i class="bi ${sentIcon} me-1"></i>${sent}
                         </span>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm status-select" style="font-size: 0.75rem; width: auto; padding: 2px 24px 2px 6px;" onchange="setReplyStatus('${c.id}', this.value)">
+                            <option value="needs_reply" ${c.reply_status === 'needs_reply' ? 'selected' : ''}>Needs Reply</option>
+                            <option value="replied" ${c.reply_status === 'replied' ? 'selected' : ''}>Replied</option>
+                            <option value="ignored" ${c.reply_status === 'ignored' ? 'selected' : ''}>Ignored</option>
+                        </select>
                     </td>
                     <td style="white-space: nowrap; font-size: 0.8rem; color: #666;">${dateStr}</td>
                     <td>
