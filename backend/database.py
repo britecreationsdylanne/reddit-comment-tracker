@@ -366,7 +366,8 @@ def get_stats():
         'last_scrape': last_scrape_dict,
         'needs_reply_count': status_counts.get('needs_reply', 0),
         'replied_count': status_counts.get('replied', 0),
-        'ignored_count': status_counts.get('ignored', 0)
+        'ignored_count': status_counts.get('ignored', 0),
+        'deleted_count': status_counts.get('deleted', 0)
     }
 
 

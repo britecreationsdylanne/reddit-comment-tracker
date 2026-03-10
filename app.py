@@ -371,7 +371,7 @@ def api_analyze_sentiment():
 def api_update_reply_status(comment_id):
     data = request.get_json()
     status = data.get('reply_status')
-    if status not in ('needs_reply', 'replied', 'ignored'):
+    if status not in ('needs_reply', 'replied', 'ignored', 'deleted'):
         return jsonify({'success': False, 'error': 'Invalid status'}), 400
     update_comment_reply_status(comment_id, status)
     backup_db()
@@ -383,7 +383,7 @@ def api_bulk_update_reply_status():
     data = request.get_json()
     comment_ids = data.get('comment_ids', [])
     status = data.get('reply_status')
-    if status not in ('needs_reply', 'replied', 'ignored'):
+    if status not in ('needs_reply', 'replied', 'ignored', 'deleted'):
         return jsonify({'success': False, 'error': 'Invalid status'}), 400
     if not comment_ids:
         return jsonify({'success': False, 'error': 'No comments selected'}), 400

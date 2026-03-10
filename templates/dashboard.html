@@ -99,6 +99,11 @@
         </a>
     </li>
     <li class="nav-item">
+        <a class="nav-link" href="#" onclick="setStatusTab('deleted'); return false;" data-tab="deleted">
+            Deleted <span class="badge bg-danger ms-1" id="tabCountDeleted">0</span>
+        </a>
+    </li>
+    <li class="nav-item">
         <a class="nav-link" href="#" onclick="setStatusTab(''); return false;" data-tab="">
             All <span class="badge bg-dark ms-1" id="tabCountAll">0</span>
         </a>
@@ -221,6 +226,9 @@
         <button class="btn btn-sm btn-info" onclick="bulkSetStatus('needs_reply')">
             <i class="bi bi-chat-dots me-1"></i>Mark Needs Reply
         </button>
+        <button class="btn btn-sm btn-danger" onclick="bulkSetStatus('deleted')">
+            <i class="bi bi-trash me-1"></i>Mark Deleted
+        </button>
         <a href="#" class="text-muted ms-2" style="font-size: 0.85rem;" onclick="clearSelection(); return false;">Clear</a>
     </div>
 </div>
@@ -248,12 +256,14 @@
     const statusColors = {
         needs_reply: 'info',
         replied: 'success',
-        ignored: 'secondary'
+        ignored: 'secondary',
+        deleted: 'danger'
     };
     const statusLabels = {
         needs_reply: 'Needs Reply',
         replied: 'Replied',
-        ignored: 'Ignored'
+        ignored: 'Ignored',
+        deleted: 'Deleted'
     };
 
     // --- Load stats ---
@@ -268,6 +278,7 @@
             document.getElementById('tabCountNeedsReply').textContent = data.needs_reply_count || 0;
             document.getElementById('tabCountReplied').textContent = data.replied_count || 0;
             document.getElementById('tabCountIgnored').textContent = data.ignored_count || 0;
+            document.getElementById('tabCountDeleted').textContent = data.deleted_count || 0;
             document.getElementById('tabCountAll').textContent = data.total_comments || 0;
         } catch (e) {
             console.error('Failed to load stats:', e);
@@ -472,6 +483,7 @@
                             <option value="needs_reply" ${c.reply_status === 'needs_reply' ? 'selected' : ''}>Needs Reply</option>
                             <option value="replied" ${c.reply_status === 'replied' ? 'selected' : ''}>Replied</option>
                             <option value="ignored" ${c.reply_status === 'ignored' ? 'selected' : ''}>Ignored</option>
+                            <option value="deleted" ${c.reply_status === 'deleted' ? 'selected' : ''}>Deleted</option>
                         </select>
                     </td>
                     <td style="white-space: nowrap; font-size: 0.8rem; color: #666;">${dateStr}</td>
